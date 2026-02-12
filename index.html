@@ -39,6 +39,18 @@
       .setPopup(new mapboxgl.Popup().setText(text))
       .addTo(map);
   });
+
+  // ページ読み込み時にログイン状態を確認
+supabase.auth.getUser().then(({ data }) => {
+  if (data.user) {
+    currentUser = data.user;
+    document.getElementById('userStatus').innerText = 'ログイン中';
+  } else {
+    currentUser = null;
+    document.getElementById('userStatus').innerText = 'ログアウト中';
+  }
+});
+
 </script>
 
 </body>
