@@ -67,7 +67,7 @@ const map=new mapboxgl.Map({
  zoom:12
 });
 
- map.on('styleimagemissing', (e) => {
+map.on('styleimagemissing', (e) => {
   // 足りない画像が要求された時に、透明のダミー画像を登録してエラーを止める
   const empty = new ImageData(1, 1);
   if (!map.hasImage(e.id)) map.addImage(e.id, empty);
