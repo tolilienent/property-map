@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-language/v1.0.0/mapbox-gl-language.js"></script>
 <head>
   <meta charset="UTF-8" />
   <title>物件マップ</title>
@@ -23,9 +24,31 @@
 
   const map = new mapboxgl.Map({
     container: 'map',
-    style: 'style: 'mapbox://styles/mapbox/streets-ja-v1',
+    style: 'mapbox://styles/mapbox/streets-v11',
     center: [139.767, 35.681],
     zoom: 12
+  });
+
+  // 🌏 日本語化
+  map.addControl(new MapboxLanguage({
+    defaultLanguage: 'ja'
+  }));
+
+  // ピンを保存する配列
+  const pins = [];
+
+  // 地図クリックでピンを立てる
+  map.on('click', (e) => {
+    const text = prompt('内容を入力してください（例：注意点など）');
+    if (!text) return;
+
+    new mapboxgl.Marker({ color: 'red' })
+      .setLngLat(e.lngLat)
+      .setPopup(new mapboxgl.Popup().setText(text))
+      .addTo(map);
+  });
+</script>
+
   });
 </script>
 
