@@ -31,23 +31,27 @@
 
 <div id="map"></div>
 
-<script>
-  // ===== Supabase 初期化 =====
-  const supabaseUrl =https://ahlgfkvqqckkxftwvgqn.supabase.co
-  const supabaseKey =sb_publishable_niuHMkXEpoIAE_UUUF0ZCw_mB7G_Ku4
-  const supabase =postgresql://postgres:[YOUR-PASSWORD]@db.ahlgfkvqqckkxftwvgqn.supabase.co:5432/postgres
+<<script>
+  // ===== Supabase 初期化（これが正解）=====
+  const supabaseUrl = 'https://ahlgfkvqqckkxftwvgqn.supabase.co';
+  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFobGdma3ZxcWNra3hmdHd2Z3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjYzNjcsImV4cCI6MjA4NjQ0MjM2N30.L2JpsadBNs-7ntVM_tYjcedL9TkL8nRfV8tXDG5G5xQ';
+  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
   let currentUser = null;
 
-supabase.auth.getSession().then(({ data }) => {
-  if (data.session && data.session.user) {
-    currentUser = data.session.user;
-    document.getElementById('userStatus').innerText = 'ログイン中';
-  } else {
-    currentUser = null;
-    document.getElementById('userStatus').innerText = 'ログアウト中';
-  }
-});
+  supabase.auth.getSession().then(({ data }) => {
+    if (data.session && data.session.user) {
+      currentUser = data.session.user;
+      document.getElementById('userStatus').innerText = 'ログイン中';
+    } else {
+      currentUser = null;
+      document.getElementById('userStatus').innerText = 'ログアウト中';
+    }
+  });
+
+  // ===== Mapbox =====
+  mapboxgl.accessToken = 'pk.eyJ1IjoidG9saWxpZW4iLCJhIjoiY21saXZ3NmN5MDFsdTNkcHVwNHJxcGk2MyJ9.KB63e24JsvfckeEz2WRcNw';
+
 
 
   // ★ Mapbox公開トークン（pk.〜）を入れる
