@@ -70,9 +70,13 @@
   // ===== Mapbox =====
   mapboxgl.accessToken = 'pk.eyJ1IjoidG9saWxpZW4iLCJhIjoiY21saXZ3NmN5MDFsdTNkcHVwNHJxcGk2MyJ9.KB63e24JsvfckeEz2WRcNw';
 
+  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-language/v1.0.0/mapbox-gl-language.js"></script>
+
+  map.addControl(new MapboxLanguage({ defaultLanguage: 'ja' }));
+
   const map = new mapboxgl.Map({
     container: 'map',
-    style: 'mapbox://styles/mapbox/streets-ja-v1',
+  　style: 'mapbox://styles/mapbox/streets-v11',
     center: [139.767, 35.681],
     zoom: 12
   });
