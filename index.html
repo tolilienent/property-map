@@ -39,15 +39,16 @@
 
   let currentUser = null;
 
-  supabase.auth.getUser().then(({ data }) => {
-    if (data.user) {
-      currentUser = data.user;
-      document.getElementById('userStatus').innerText = 'ログイン中';
-    } else {
-      currentUser = null;
-      document.getElementById('userStatus').innerText = 'ログアウト中';
-    }
-  });
+supabase.auth.getSession().then(({ data }) => {
+  if (data.session && data.session.user) {
+    currentUser = data.session.user;
+    document.getElementById('userStatus').innerText = 'ログイン中';
+  } else {
+    currentUser = null;
+    document.getElementById('userStatus').innerText = 'ログアウト中';
+  }
+});
+
 
   // ★ Mapbox公開トークン（pk.〜）を入れる
   mapboxgl.accessToken = 'pk.eyJ1IjoidG9saWxpZW4iLCJhIjoiY21saXZ3NmN5MDFsdTNkcHVwNHJxcGk2MyJ9.KB63e24JsvfckeEz2WRcNw';
