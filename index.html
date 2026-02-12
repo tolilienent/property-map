@@ -1,29 +1,32 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <title>物件マップ</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<title>物件マップ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Mapbox -->
-  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+<!-- Mapbox -->
+<script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
 
-  <style>
-    body { margin: 0; }
-    #map { width: 100vw; height: 100vh; }
-    #userStatus {
-      position:absolute;
-      z-index:10;
-      background:#fff;
-      padding:6px 10px;
-      margin:10px;
-      font-size:14px;
-    }
-  </style>
+<!-- 日本語化プラグイン -->
+<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-language/v1.0.0/mapbox-gl-language.js"></script>
+
+<style>
+body { margin:0; }
+#map { width:100vw; height:100vh; }
+#userStatus{
+ position:absolute;
+ z-index:10;
+ background:#fff;
+ padding:6px 10px;
+ margin:10px;
+ font-size:14px;
+}
+</style>
 </head>
 
 <body>
@@ -32,70 +35,65 @@
 <div id="map"></div>
 
 <script>
-  // ===== Supabase設定 =====
-  const SUPABASE_URL = 'https://ahlgfkvqqckkxftwvgqn.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFobGdma3ZxcWNra3hmdHd2Z3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjYzNjcsImV4cCI6MjA4NjQ0MjM2N30.L2JpsadBNs-7ntVM_tYjcedL9TkL8nRfV8tXDG5G5xQ';
+// ===== Supabase =====
+const SUPABASE_URL = 'https://ahlgfkvqqckkxftwvgqn.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFobGdma3ZxcWNra3hmdHd2Z3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjYzNjcsImV4cCI6MjA4NjQ0MjM2N30.L2JpsadBNs-7ntVM_tYjcedL9TkL8nRfV8tXDG5G5xQ';
 
-  // Supabaseは window.sb に1回だけ作る
-  if (!window.sb) {
-    window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  }
+if(!window.sb){
+ window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+}
 
-  const sb = window.sb;
+const sb = window.sb;
+let currentUser = null;
+const status = document.getElementById('userStatus');
 
-  let currentUser = null;
-  const status = document.getElementById('userStatus');
+sb.auth.getSession().then(({data})=>{
+ if(data.session && data.session.user){
+  currentUser = data.session.user;
+  status.innerText = 'ログイン中';
+ }else{
+  status.innerText = 'ログアウト中';
+ }
+});
 
-  // セッション確認
-  sb.auth.getSession().then(({ data }) => {
-    if (data.session && data.session.user) {
-      currentUser = data.session.user;
-      status.innerText = 'ログイン中';
-    } else {
-      status.innerText = 'ログアウト中';
-    }
-  });
+sb.auth.onAuthStateChange((event,session)=>{
+ if(session && session.user){
+  currentUser = session.user;
+  status.innerText = 'ログイン中';
+ }else{
+  currentUser = null;
+  status.innerText = 'ログアウト中';
+ }
+});
 
-  // ログイン状態監視
-  sb.auth.onAuthStateChange((event, session) => {
-    if (session && session.user) {
-      currentUser = session.user;
-      status.innerText = 'ログイン中';
-    } else {
-      currentUser = null;
-      status.innerText = 'ログアウト中';
-    }
-  });
+// ===== Mapbox =====
+mapboxgl.accessToken = 'pk.eyJ1IjoidG9saWxpZW4iLCJhIjoiY21saXZ3NmN5MDFsdTNkcHVwNHJxcGk2MyJ9.KB63e24JsvfckeEz2WRcNw';
 
-  // ===== Mapbox =====
-  mapboxgl.accessToken = 'pk.eyJ1IjoidG9saWxpZW4iLCJhIjoiY21saXZ3NmN5MDFsdTNkcHVwNHJxcGk2MyJ9.KB63e24JsvfckeEz2WRcNw';
+const map = new mapboxgl.Map({
+ container:'map',
+ style:'mapbox://styles/mapbox/streets-v11',
+ center:[139.767,35.681],
+ zoom:12
+});
 
-  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-language/v1.0.0/mapbox-gl-language.js"></script>
+// 日本語表示
+map.addControl(new MapboxLanguage({defaultLanguage:'ja'}));
 
-  map.addControl(new MapboxLanguage({ defaultLanguage: 'ja' }));
+// ピン追加
+map.on('click',(e)=>{
+ if(!currentUser){
+  alert('管理者ログインが必要です');
+  return;
+ }
 
-  const map = new mapboxgl.Map({
-    container: 'map',
-  　style: 'mapbox://styles/mapbox/streets-v11',
-    center: [139.767, 35.681],
-    zoom: 12
-  });
+ const text = prompt('内容を入力してください');
+ if(!text) return;
 
-  // ピン追加（ログイン時のみ）
-  map.on('click', (e) => {
-    if (!currentUser) {
-      alert('管理者ログインが必要です');
-      return;
-    }
-
-    const text = prompt('内容を入力してください');
-    if (!text) return;
-
-    new mapboxgl.Marker({ color: 'red' })
-      .setLngLat(e.lngLat)
-      .setPopup(new mapboxgl.Popup().setText(text))
-      .addTo(map);
-  });
+ new mapboxgl.Marker({color:'red'})
+  .setLngLat(e.lngLat)
+  .setPopup(new mapboxgl.Popup().setText(text))
+  .addTo(map);
+});
 </script>
 
 </body>
