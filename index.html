@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Supabase -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Mapbox本体 -->
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
@@ -39,9 +39,13 @@
 
   let currentUser = null;
 
-  supabase.auth.getSession().then(({ data }) => {
-    if (data.session && data.session.user) {
-      currentUser = data.session.user;
+  // 初期表示
+  document.getElementById('userStatus').innerText = 'ログアウト中';
+
+  // 認証状態の監視（ログイン・ログアウトを即反映）
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (session && session.user) {
+      currentUser = session.user;
       document.getElementById('userStatus').innerText = 'ログイン中';
     } else {
       currentUser = null;
@@ -49,7 +53,7 @@
     }
   });
 
-  // ===== Mapbox =====
+  // ===== Mapbox 初期化 =====
   mapboxgl.accessToken = 'pk.eyJ1IjoidG9saWxpZW4iLCJhIjoiY21saXZ3NmN5MDFsdTNkcHVwNHJxcGk2MyJ9.KB63e24JsvfckeEz2WRcNw';
 
   const map = new mapboxgl.Map({
@@ -59,7 +63,13 @@
     zoom: 12
   });
 
+  // 地図クリックでピンを立てる（管理者のみ）
   map.on('click', (e) => {
+    if (!currentUser) {
+      alert('管理者ログインが必要です');
+      return;
+    }
+
     const text = prompt('内容を入力してください');
     if (!text) return;
 
@@ -69,7 +79,6 @@
       .addTo(map);
   });
 </script>
-
 
 </body>
 </html>
