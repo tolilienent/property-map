@@ -5,9 +5,14 @@
 <title>物件マップ</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- Mapbox -->
 <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
 <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+
+<!-- 日本語化 -->
 <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-language/v1.0.0/mapbox-gl-language.js"></script>
 
 <style>
@@ -30,6 +35,7 @@ body{margin:0;}
 <div id="map"></div>
 
 <script>
+// ===== Supabase =====
 const SUPABASE_URL='https://ahlgfkvqqckkxftwvgqn.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFobGdma3ZxcWNra3hmdHd2Z3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjYzNjcsImV4cCI6MjA4NjQ0MjM2N30.L2JpsadBNs-7ntVM_tYjcedL9TkL8nRfV8tXDG5G5xQ';
 
@@ -58,6 +64,7 @@ sb.auth.onAuthStateChange((e,s)=>{
  }
 });
 
+// ===== Mapbox =====
 mapboxgl.accessToken='pk.eyJ1IjoidG9saWxpZW4iLCJhIjoiY21saXZ3NmN5MDFsdTNkcHVwNHJxcGk2MyJ9.KB63e24JsvfckeEz2WRcNw';
 
 const map=new mapboxgl.Map({
@@ -67,15 +74,16 @@ const map=new mapboxgl.Map({
  zoom:12
 });
 
-map.on('styleimagemissing', (e) => {
-  // 足りない画像が要求された時に、透明のダミー画像を登録してエラーを止める
-  const empty = new ImageData(1, 1);
-  if (!map.hasImage(e.id)) map.addImage(e.id, empty);
+// ★エラー防止（missing image対策）
+map.on('styleimagemissing',e=>{
+ const img=new ImageData(1,1);
+ if(!map.hasImage(e.id)) map.addImage(e.id,img);
 });
 
-
+// 日本語表示
 map.addControl(new MapboxLanguage({defaultLanguage:'ja'}));
 
+// ピン追加（ログイン時のみ）
 map.on('click',e=>{
  if(!currentUser){
   alert('管理者ログインが必要です');
