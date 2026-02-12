@@ -8,52 +8,65 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Mapbox本体 -->
+  <!-- Mapbox -->
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
 
   <style>
     body { margin: 0; }
     #map { width: 100vw; height: 100vh; }
+    #userStatus {
+      position:absolute;
+      z-index:10;
+      background:#fff;
+      padding:6px 10px;
+      margin:10px;
+      font-size:14px;
+    }
   </style>
 </head>
-<body>
-<div id="userStatus" style="
-  position:absolute;
-  z-index:10;
-  background:#fff;
-  padding:6px 10px;
-  margin:10px;
-  font-size:14px;
-">
-  読み込み中…
-</div>
 
+<body>
+
+<div id="userStatus">ログアウト中</div>
 <div id="map"></div>
 
 <script>
-  // ===== Supabase 初期化 =====
-  const supabaseUrl = 'https://ahlgfkvqqckkxftwvgqn.supabase.co';
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFobGdma3ZxcWNra3hmdHd2Z3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjYzNjcsImV4cCI6MjA4NjQ0MjM2N30.L2JpsadBNs-7ntVM_tYjcedL9TkL8nRfV8tXDG5G5xQ';
-  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+  // ===== Supabase 設定 =====
+  const SUPABASE_URL = 'https://ahlgfkvqqckkxftwvgqn.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFobGdma3ZxcWNra3hmdHd2Z3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjYzNjcsImV4cCI6MjA4NjQ0MjM2N30.L2JpsadBNs-7ntVM_tYjcedL9TkL8nRfV8tXDG5G5xQ';
+
+  // supabase を1回だけ作る（再読み込みエラー防止）
+  if (!window.sb) {
+    window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+  const supabase = window.sb;
 
   let currentUser = null;
+  const status = document.getElementById('userStatus');
 
-  // 初期表示
-  document.getElementById('userStatus').innerText = 'ログアウト中';
-
-  // 認証状態の監視（ログイン・ログアウトを即反映）
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (session && session.user) {
-      currentUser = session.user;
-      document.getElementById('userStatus').innerText = 'ログイン中';
+  // 認証状態チェック
+  supabase.auth.getSession().then(({ data }) => {
+    if (data.session && data.session.user) {
+      currentUser = data.session.user;
+      status.innerText = 'ログイン中';
     } else {
-      currentUser = null;
-      document.getElementById('userStatus').innerText = 'ログアウト中';
+      status.innerText = 'ログアウト中';
     }
   });
 
-  // ===== Mapbox 初期化 =====
+  // ログイン状態の変化を監視
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (session && session.user) {
+      currentUser = session.user;
+      status.innerText = 'ログイン中';
+    } else {
+      currentUser = null;
+      status.innerText = 'ログアウト中';
+    }
+  });
+
+  // ===== Mapbox =====
   mapboxgl.accessToken = 'pk.eyJ1IjoidG9saWxpZW4iLCJhIjoiY21saXZ3NmN5MDFsdTNkcHVwNHJxcGk2MyJ9.KB63e24JsvfckeEz2WRcNw';
 
   const map = new mapboxgl.Map({
@@ -63,7 +76,7 @@
     zoom: 12
   });
 
-  // 地図クリックでピンを立てる（管理者のみ）
+  // ピン追加（ログイン時のみ）
   map.on('click', (e) => {
     if (!currentUser) {
       alert('管理者ログインが必要です');
