@@ -32,6 +32,23 @@ body{margin:0;}
 <body>
 
 <div id="userStatus">ログアウト中</div>
+<div id="authBox" style="
+  position:absolute;
+  z-index:10;
+  right:10px;
+  top:10px;
+  background:#fff;
+  padding:10px;
+  border:1px solid #ddd;
+  font-size:14px;
+">
+  <div style="margin-bottom:6px;">管理者ログイン</div>
+  <input id="email" type="email" placeholder="メール" style="width:200px;"><br><br>
+  <input id="password" type="password" placeholder="パスワード" style="width:200px;"><br><br>
+  <button onclick="doLogin()">ログイン</button>
+  <button onclick="doLogout()">ログアウト</button>
+</div>
+
 <div id="map"></div>
 
 <script>
@@ -46,6 +63,23 @@ if(!window.sb){
 const sb=window.sb;
 let currentUser=null;
 const status=document.getElementById('userStatus');
+async function doLogin(){
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){
+    alert('ログイン失敗: ' + error.message);
+  }else{
+    alert('ログイン成功');
+  }
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  alert('ログアウトしました');
+}
+
 
 sb.auth.getSession().then(({data})=>{
  if(data.session&&data.session.user){
