@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="ja">
-<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-language/v1.0.0/mapbox-gl-language.js"></script>
 <head>
   <meta charset="UTF-8" />
   <title>物件マップ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Mapbox -->
+  <!-- Mapbox本体 -->
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
 
@@ -20,35 +19,25 @@
 <div id="map"></div>
 
 <script>
+  // ★ Mapbox公開トークン（pk.〜）を入れる
   mapboxgl.accessToken = 'pk.eyJ1IjoidG9saWxpZW4iLCJhIjoiY21saXZ3NmN5MDFsdTNkcHVwNHJxcGk2MyJ9.KB63e24JsvfckeEz2WRcNw';
 
   const map = new mapboxgl.Map({
     container: 'map',
-    style: 'mapbox://styles/mapbox/streets-v11',
+    style: 'mapbox://styles/mapbox/streets-ja-v1',
     center: [139.767, 35.681],
     zoom: 12
   });
 
-  // 🌏 日本語化
-  map.addControl(new MapboxLanguage({
-    defaultLanguage: 'ja'
-  }));
-
-  // ピンを保存する配列
-  const pins = [];
-
-  // 地図クリックでピンを立てる
+  // 地図クリックでピンを立てる（大島てる風）
   map.on('click', (e) => {
-    const text = prompt('内容を入力してください（例：注意点など）');
+    const text = prompt('内容を入力してください');
     if (!text) return;
 
     new mapboxgl.Marker({ color: 'red' })
       .setLngLat(e.lngLat)
       .setPopup(new mapboxgl.Popup().setText(text))
       .addTo(map);
-  });
-</script>
-
   });
 </script>
 
