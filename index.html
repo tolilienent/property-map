@@ -116,7 +116,10 @@ async function loadPins(){
   const { data, error } = await sb
     .from('pins')
     .select('id,title,lat,lng,created_at,user_id')
-    .order('created_at', { ascending:false });
+  const { data, error } = await sb
+    .from('pins')
+    .select('id,title,lat,lng,user_id');
+
 
   if(error){
     console.error('loadPins error:', error);
