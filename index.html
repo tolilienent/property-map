@@ -14,121 +14,152 @@
 body{margin:0;}
 #map{width:100vw;height:100vh;}
 #userStatus{
- position:absolute;
- z-index:10;
- background:#fff;
- padding:6px 10px;
- margin:10px;
- font-size:14px;
+ position:absolute; z-index:10; background:#fff;
+ padding:6px 10px; margin:10px; font-size:14px;
 }
 #authBox{
- position:absolute;
- z-index:10;
- right:10px;
- top:10px;
- background:#fff;
- padding:10px;
- border:1px solid #ddd;
+ position:absolute; z-index:10; right:10px; top:10px;
+ background:#fff; padding:10px; border:1px solid #ddd; font-size:14px;
 }
 </style>
 </head>
 
 <body>
-
 <div id="userStatus">確認中...</div>
 
 <div id="authBox">
-<input id="email" placeholder="メール"><br><br>
-<input id="password" type="password" placeholder="パスワード"><br><br>
-<button onclick="login()">ログイン</button>
-<button onclick="logout()">ログアウト</button>
+  <div style="margin-bottom:6px;">ログイン</div>
+  <input id="email" type="email" placeholder="メール" style="width:200px;"><br><br>
+  <input id="password" type="password" placeholder="パスワード" style="width:200px;"><br><br>
+  <button onclick="doLogin()">ログイン</button>
+  <button onclick="doLogout()">ログアウト</button>
 </div>
 
 <div id="map"></div>
 
 <script>
-/* ===== Supabase ===== */
+/* ===== Supabase（F5でもセッション保持）===== */
 const sb = supabase.createClient(
- 'https://ahlgfkvqqckkxftwvgqn.supabase.co',
- 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFobGdma3ZxcWNra3hmdHd2Z3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjYzNjcsImV4cCI6MjA4NjQ0MjM2N30.L2JpsadBNs-7ntVM_tYjcedL9TkL8nRfV8tXDG5G5xQ',
- {
-  auth:{
-   persistSession:true,
-   autoRefreshToken:true,
-   storage:localStorage
+  'https://ahlgfkvqqckkxftwvgqn.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFobGdma3ZxcWNra3hmdHd2Z3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjYzNjcsImV4cCI6MjA4NjQ0MjM2N30.L2JpsadBNs-7ntVM_tYjcedL9TkL8nRfV8tXDG5G5xQ',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storage: window.localStorage
+    }
   }
- });
+);
 
-let user=null;
-const status=document.getElementById('userStatus');
+let currentUser = null;
+const statusEl = document.getElementById('userStatus');
 
-async function refresh(){
- const {data}=await sb.auth.getSession();
- user=data.session?.user||null;
- status.innerText=user?'ログイン中':'ログアウト中';
+async function refreshSessionUI(){
+  const { data, error } = await sb.auth.getSession();
+  if (error) console.log(error);
+
+  currentUser = data.session?.user ?? null;
+  statusEl.innerText = currentUser ? 'ログイン中' : 'ログアウト中';
 }
 
-async function login(){
- const {error}=await sb.auth.signInWithPassword({
-  email:email.value,
-  password:password.value
- });
- if(error)alert(error.message);
- refresh();
+async function doLogin(){
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if(error) alert('ログイン失敗: ' + error.message);
+  else alert('ログイン成功');
+  await refreshSessionUI();
 }
 
-async function logout(){
- await sb.auth.signOut();
- refresh();
+async function doLogout(){
+  await sb.auth.signOut();
+  alert('ログアウトしました');
+  await refreshSessionUI();
 }
 
-sb.auth.onAuthStateChange(refresh);
+sb.auth.onAuthStateChange(async ()=>{ await refreshSessionUI(); });
 
 /* ===== Mapbox ===== */
 mapboxgl.accessToken='pk.eyJ1IjoidG9saWxpZW4iLCJhIjoiY21saXZ3NmN5MDFsdTNkcHVwNHJxcGk2MyJ9.KB63e24JsvfckeEz2WRcNw';
 
-const map=new mapboxgl.Map({
- container:'map',
- style:'mapbox://styles/mapbox/streets-v11',
- center:[139.767,35.681],
- zoom:12
+const map = new mapboxgl.Map({
+  container:'map',
+  style:'mapbox://styles/mapbox/streets-v11',
+  center:[139.767,35.681],
+  zoom:12
 });
 
-map.addControl(new MapboxLanguage({defaultLanguage:'ja'}));
+map.on('styleimagemissing', e => {
+  const img = new ImageData(1,1);
+  if(!map.hasImage(e.id)) map.addImage(e.id, img);
+});
 
-const markers=[];
+map.addControl(new MapboxLanguage({ defaultLanguage:'ja' }));
 
-function draw(p){
- new mapboxgl.Marker({color:'red'})
-  .setLngLat([p.lng,p.lat])
-  .setPopup(new mapboxgl.Popup().setText(p.title))
-  .addTo(map);
+const markers = [];
+function clearMarkers(){
+  while(markers.length){
+    try { markers.pop().remove(); } catch(e){}
+  }
+}
+function addMarker(pin){
+  const m = new mapboxgl.Marker({ color:'red' })
+    .setLngLat([pin.lng, pin.lat])
+    .setPopup(new mapboxgl.Popup().setText(pin.title || 'pin'))
+    .addTo(map);
+  markers.push(m);
 }
 
+/* ===== DBから読み込み（ここがF5で消えない鍵）===== */
 async function loadPins(){
- const {data}=await sb.from('pins').select('*');
- markers.forEach(m=>m.remove());
- data?.forEach(draw);
+  const { data, error } = await sb
+    .from('pins')
+    .select('id,title,lat,lng,created_at,user_id')
+    .order('created_at', { ascending:false });
+
+  if(error){
+    console.error('loadPins error:', error);
+    alert('読み込み失敗: ' + error.message);
+    return;
+  }
+
+  clearMarkers();
+  (data || []).forEach(addMarker);
 }
 
-map.on('load',loadPins);
+/* ===== クリックで保存（INSERT）===== */
+map.on('click', async (e) => {
+  if(!currentUser){
+    alert('ログインが必要です（未ログインは閲覧のみ）');
+    return;
+  }
 
-map.on('click',async e=>{
- if(!user){alert('ログイン必要');return;}
- const t=prompt('内容');
- if(!t)return;
+  const text = prompt('内容を入力してください');
+  if(!text) return;
 
- const {data,error}=await sb
-  .from('pins')
-  .insert([{title:t,lat:e.lngLat.lat,lng:e.lngLat.lng}])
-  .select()
-  .single();
+  const { data, error } = await sb
+    .from('pins')
+    .insert([{ title: text, lat: e.lngLat.lat, lng: e.lngLat.lng }])
+    .select('id,title,lat,lng,created_at,user_id')
+    .single();
 
- if(error){alert(error.message);return;}
- draw(data);
+  if(error){
+    console.error('insert error:', error);
+    alert('保存失敗: ' + error.message);
+    return;
+  }
+
+  addMarker(data);
 });
 
-refresh();
+/* 起動時：セッション反映 → 地図ロード後にDBから読み込み */
+(async function init(){
+  await refreshSessionUI();
+  map.on('load', async () => {
+    await loadPins();
+  });
+})();
 </script>
 </body>
 </html>
