@@ -1,85 +1,89 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
+<title>property-map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<!-- Supabase UMD（必須） -->
+<!-- ✅ Supabase UMD -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <!-- Mapbox -->
 <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-<link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+<link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-language/v1.0.0/mapbox-gl-language.js"></script>
 
 <style>
 body{margin:0;}
-#map{height:100vh;}
-#auth{position:absolute;z-index:1;background:#fff;padding:10px;}
+#map{width:100vw;height:100vh;}
+#msg{
+  position:absolute; z-index:10; background:#fff;
+  padding:6px 10px; margin:10px; font-size:14px;
+}
 </style>
 </head>
-
 <body>
 
-<div id="auth">
-<input id="email" placeholder="email"><br>
-<input id="pass" type="password" placeholder="password"><br>
-<button onclick="login()">ログイン</button>
-<button onclick="signup()">登録</button>
-<button onclick="logout()">ログアウト</button>
-<div id="status"></div>
-</div>
-
+<div id="msg">読み込み中...</div>
 <div id="map"></div>
 
 <script>
 const sb = supabase.createClient(
- "https://ahlgfkvqqckkxftwvgqn.supabase.co",
- "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFobGdma3ZxcWNra3hmdHd2Z3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjYzNjcsImV4cCI6MjA4NjQ0MjM2N30.L2JpsadBNs-7ntVM_tYjcedL9TkL8nRfV8tXDG5G5xQ",
- {auth:{persistSession:true,storage:localStorage}}
+  "https://ahlgfkvqqckkxftwvgqn.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFobGdma3ZxcWNra3hmdHd2Z3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjYzNjcsImV4cCI6MjA4NjQ0MjM2N30.L2JpsadBNs-7ntVM_tYjcedL9TkL8nRfV8tXDG5G5xQ"
 );
 
-const status=document.getElementById("status");
+const msg = document.getElementById("msg");
 
-function show(s){
- status.innerText=s?.user?"ログイン中":"未ログイン";
-}
-
-sb.auth.getSession().then(r=>show(r.data.session));
-sb.auth.onAuthStateChange((e,s)=>show(s));
-
-async function login(){
- const {data,error}=await sb.auth.signInWithPassword({
-  email:email.value,
-  password:pass.value
- });
- if(error){alert(error.message);return;}
- location.reload(); // ←超重要
-}
-
-async function signup(){
- await sb.auth.signUp({email:email.value,password:pass.value});
- alert("登録OK");
-}
-
-async function logout(){
- await sb.auth.signOut();
- location.reload();
-}
-
-/* Map */
 mapboxgl.accessToken="pk.eyJ1IjoidG9saWxpZW4iLCJhIjoiY21saXZ3NmN5MDFsdTNkcHVwNHJxcGk2MyJ9.KB63e24JsvfckeEz2WRcNw";
 
-const map=new mapboxgl.Map({
- container:"map",
- style:"mapbox://styles/mapbox/streets-v11",
- center:[139.7,35.6],
- zoom:11
+const map = new mapboxgl.Map({
+  container:"map",
+  style:"mapbox://styles/mapbox/streets-v11",
+  center:[139.767,35.681],
+  zoom:12
 });
+map.addControl(new MapboxLanguage({ defaultLanguage:"ja" }));
 
-map.on("click",async e=>{
- const {data:{session}}=await sb.auth.getSession();
- if(!session){alert("ログイン必要");return;}
+const markers = [];
+function clearMarkers(){ while(markers.length){ try{ markers.pop().remove(); }catch(e){} } }
+function addMarker(p){
+  const m = new mapboxgl.Marker({ color:"red" })
+    .setLngLat([p.lng, p.lat])
+    .setPopup(new mapboxgl.Popup().setText(p.title || "pin"))
+    .addTo(map);
+  markers.push(m);
+}
 
- const text=prompt("内容");
- if(!text)return;
+async function loadPins(){
+  const { data, error } = await sb
+    .from("pins")
+    .select("*")
+    .order("created_at", { ascending:false });
 
- const {error}=await sb.from("pins").inser
+  if (error) { msg.innerText = "読み込み失敗: " + error.message; return; }
+
+  clearMarkers();
+  (data || []).forEach(addMarker);
+  msg.innerText = "クリックで保存OK（ログインなし）";
+}
+
+map.on("load", loadPins);
+
+map.on("click", async (e) => {
+  const title = prompt("内容");
+  if(!title) return;
+
+  const { data, error } = await sb
+    .from("pins")
+    .insert([{ title, lat: e.lngLat.lat, lng: e.lngLat.lng }])
+    .select("*")
+    .single();
+
+  if (error) { alert("保存失敗: " + error.message); return; }
+
+  addMarker(data);
+});
+</script>
+</body>
+</html>
