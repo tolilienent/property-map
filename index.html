@@ -5,42 +5,31 @@
 <title>物件マップ</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- ✅ Supabase UMD -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-<!-- Mapbox -->
 <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-
-<!-- 日本語化 -->
 <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-language/v1.0.0/mapbox-gl-language.js"></script>
 
 <style>
 html,body{height:100%;margin:0;}
 #map{width:100vw;height:100vh;}
-#userStatus{
- position:absolute;z-index:10;background:#fff;
- padding:6px 10px;margin:10px;font-size:14px;border:1px solid #ddd;
+#box{
+ position:absolute;z-index:10;top:10px;left:10px;
+ background:#fff;border:1px solid #ddd;padding:10px;font-size:14px;
+ width:260px;
 }
-#authBox{
- position:absolute;z-index:10;right:10px;top:10px;
- background:#fff;padding:10px;border:1px solid #ddd;font-size:14px;
- width:240px;
-}
-#authBox input{width:220px;padding:6px;}
-#authBox button{margin-top:6px;width:110px;padding:6px;}
-.small{font-size:12px;color:#666;margin-top:6px;word-break:break-all;}
+#box input{width:240px;padding:6px;}
+#box button{width:120px;padding:6px;margin-top:6px;}
+.small{font-size:12px;color:#666;word-break:break-all;margin-top:6px;}
 </style>
 </head>
-
 <body>
-<div id="userStatus">確認中...</div>
 
-<div id="authBox">
-  <div style="margin-bottom:6px;">ログイン / 登録</div>
+<div id="box">
+  <div><b>ログイン/登録</b></div>
   <input id="email" type="email" placeholder="メール"><br><br>
   <input id="password" type="password" placeholder="パスワード"><br>
-
   <div>
     <button onclick="doLogin()">ログイン</button>
     <button onclick="doLogout()">ログアウト</button>
@@ -49,76 +38,48 @@ html,body{height:100%;margin:0;}
     <button onclick="doSignup()">登録</button>
     <button onclick="reloadPins()">再読込</button>
   </div>
-
-  <div id="debug" class="small"></div>
+  <div id="status" class="small">status: ...</div>
   <div id="msg" class="small"></div>
 </div>
 
 <div id="map"></div>
 
 <script>
-/* ===== Supabase ===== */
 const sb = supabase.createClient(
   "https://ahlgfkvqqckkxftwvgqn.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFobGdma3ZxcWNra3hmdHd2Z3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjYzNjcsImV4cCI6MjA4NjQ0MjM2N30.L2JpsadBNs-7ntVM_tYjcedL9TkL8nRfV8tXDG5G5xQ",
-  {
-    auth:{
-      persistSession:true,
-      autoRefreshToken:true,
-      detectSessionInUrl:true,
-      storage:window.localStorage
-    }
-  }
+  { auth:{ persistSession:true, storage:window.localStorage } }
 );
 
-let currentUser=null;
-const statusEl=document.getElementById("userStatus");
-const debugEl=document.getElementById("debug");
+const statusEl=document.getElementById("status");
 const msgEl=document.getElementById("msg");
+function msg(t){ msgEl.textContent=t||""; }
 
-function setUser(session){
-  currentUser=session?.user||null;
-  statusEl.innerText=currentUser?"ログイン中":"ログアウト中";
-  debugEl.innerText=currentUser ? ("user_id: "+currentUser.id) : "user_id: (none)";
+function showSession(session){
+  const u=session?.user;
+  statusEl.textContent = u ? ("status: ログイン中 / "+u.id) : "status: 未ログイン";
 }
 
-function setMsg(t){ msgEl.innerText=t||""; }
+sb.auth.getSession().then(({data})=>showSession(data.session));
+sb.auth.onAuthStateChange((_e,s)=>showSession(s));
 
-/* 起動時 */
-sb.auth.getSession().then(({data})=>setUser(data.session));
-sb.auth.onAuthStateChange((e,s)=>setUser(s));
-
-/* ログイン */
 window.doLogin = async ()=>{
-  setMsg("");
-  const {data,error}=await sb.auth.signInWithPassword({
-    email: email.value,
-    password: password.value
-  });
-  if(error){alert("ログイン失敗: "+error.message);return;}
-  alert("ログイン成功");
-  setUser(data.session);
+  const {data,error}=await sb.auth.signInWithPassword({ email:email.value, password:password.value });
+  if(error){ alert(error.message); return; }
+  showSession(data.session);
 };
 
-/* 登録 */
 window.doSignup = async ()=>{
-  setMsg("");
-  const {error}=await sb.auth.signUp({
-    email: email.value,
-    password: password.value
-  });
-  if(error){alert("登録失敗: "+error.message);return;}
-  alert("登録OK（必要なら確認メール）");
+  const {error}=await sb.auth.signUp({ email:email.value, password:password.value });
+  if(error){ alert(error.message); return; }
+  alert("登録OK（設定により確認メール）");
 };
 
-/* ログアウト */
 window.doLogout = async ()=>{
   await sb.auth.signOut();
-  alert("ログアウトしました");
-  setUser(null);
+  showSession(null);
 };
 
-/* ===== Mapbox ===== */
 mapboxgl.accessToken="pk.eyJ1IjoidG9saWxpZW4iLCJhIjoiY21saXZ3NmN5MDFsdTNkcHVwNHJxcGk2MyJ9.KB63e24JsvfckeEz2WRcNw";
 
 const map=new mapboxgl.Map({
@@ -127,15 +88,8 @@ const map=new mapboxgl.Map({
   center:[139.767,35.681],
   zoom:12
 });
-
-map.on("error",(e)=>{
-  const m = e?.error?.message ? e.error.message : JSON.stringify(e);
-  setMsg("Mapboxエラー: "+m);
-});
-
 map.addControl(new MapboxLanguage({defaultLanguage:"ja"}));
 
-/* ピン描画 */
 const markers=[];
 function clearMarkers(){ while(markers.length){ try{ markers.pop().remove(); }catch(e){} } }
 function addMarker(p){
@@ -146,40 +100,31 @@ function addMarker(p){
   markers.push(m);
 }
 
-/* DBから読み込み */
 async function loadPins(){
-  setMsg("");
-  const {data,error}=await sb
-    .from("pins")
-    .select("*")
-    .order("created_at",{ascending:false});
-
-  if(error){ setMsg("読み込み失敗: "+error.message); return; }
-
+  const {data,error}=await sb.from("pins").select("*").order("created_at",{ascending:false});
+  if(error){ msg("読み込み失敗: "+error.message); return; }
   clearMarkers();
   (data||[]).forEach(addMarker);
-  setMsg("ピン読み込みOK");
+  msg("読み込みOK: "+(data?.length||0));
 }
 window.reloadPins = loadPins;
 
 map.on("load", loadPins);
 
-/* クリックで保存（※RLS OFF前提なのでログイン無しでも保存できる） */
 map.on("click", async (e)=>{
-  setMsg("");
-  const text=prompt("内容を入力してください");
-  if(!text) return;
+  const title = prompt("内容");
+  if(!title) return;
 
   const {data,error}=await sb
     .from("pins")
-    .insert([{title:text,lat:e.lngLat.lat,lng:e.lngLat.lng}])
+    .insert([{ title, lat:e.lngLat.lat, lng:e.lngLat.lng }])
     .select("*")
     .single();
 
-  if(error){ setMsg("保存失敗: "+error.message); alert("保存失敗: "+error.message); return; }
+  if(error){ alert("保存失敗: "+error.message); msg("保存失敗: "+error.message); return; }
 
   addMarker(data);
-  setMsg("保存OK");
+  msg("保存OK");
 });
 </script>
 
