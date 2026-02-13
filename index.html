@@ -1,158 +1,163 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>物件マップ</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- ✅ Supabase（必ずUMD版） -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
+<!-- Mapbox -->
 <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-<link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+<link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
 
+<!-- 日本語化 -->
 <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-language/v1.0.0/mapbox-gl-language.js"></script>
 
 <style>
 body{margin:0;}
 #map{width:100vw;height:100vh;}
-
 #userStatus{
- position:absolute;
- z-index:10;
- background:#fff;
- padding:6px 10px;
- margin:10px;
- font-size:14px;
+ position:absolute; z-index:10; background:#fff;
+ padding:6px 10px; margin:10px; font-size:14px;
 }
-
 #authBox{
- position:absolute;
- z-index:10;
- right:10px;
- top:10px;
- background:#fff;
- padding:10px;
- border:1px solid #ddd;
+ position:absolute; z-index:10; right:10px; top:10px;
+ background:#fff; padding:10px; border:1px solid #ddd; font-size:14px;
 }
 </style>
 </head>
 
 <body>
-
-<div id="userStatus">読み込み中...</div>
+<div id="userStatus">確認中...</div>
 
 <div id="authBox">
-<input id="email" placeholder="メール"><br><br>
-<input id="password" type="password" placeholder="パスワード"><br><br>
-<button onclick="doLogin()">ログイン</button>
-<button onclick="doLogout()">ログアウト</button>
+  <div style="margin-bottom:6px;">ログイン</div>
+  <input id="email" type="email" placeholder="メール" style="width:200px;"><br><br>
+  <input id="password" type="password" placeholder="パスワード" style="width:200px;"><br><br>
+  <button onclick="doLogin()">ログイン</button>
+  <button onclick="doLogout()">ログアウト</button>
 </div>
 
 <div id="map"></div>
 
 <script>
-/* ================== Supabase ================== */
+(async () => {
+  try {
+    // ===== Supabase =====
+    const SUPABASE_URL='https://ahlgfkvqqckkxftwvgqn.supabase.co';
+    const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFobGdma3ZxcWNra3hmdHd2Z3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjYzNjcsImV4cCI6MjA4NjQ0MjM2N30.L2JpsadBNs-7ntVM_tYjcedL9TkL8nRfV8tXDG5G5xQ';
 
-const sb = supabase.createClient(
-  "https://ahlgfkvqqckkxftwvgqn.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFobGdma3ZxcWNra3hmdHd2Z3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjYzNjcsImV4cCI6MjA4NjQ0MjM2N30.L2JpsadBNs-7ntVM_tYjcedL9TkL8nRfV8tXDG5G5xQ",
-  {
-    auth:{
-      persistSession:true,
-      autoRefreshToken:true,
-      storage:localStorage
+    const statusEl = document.getElementById('userStatus');
+
+    if (!window.supabase) {
+      statusEl.innerText = "Supabaseが読み込めてない（UMDでない可能性）";
+      return;
     }
+
+    const sb = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY,
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          storage: window.localStorage
+        }
+      }
+    );
+
+    let currentUser = null;
+
+    function setUser(session){
+      currentUser = session?.user ?? null;
+      statusEl.innerText = currentUser ? 'ログイン中' : 'ログアウト中';
+    }
+
+    // onclick から呼べるようにグローバル化
+    window.doLogin = async function(){
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) { alert('ログイン失敗: ' + error.message); return; }
+      alert('ログイン成功');
+      setUser(data.session);
+    };
+
+    window.doLogout = async function(){
+      await sb.auth.signOut();
+      alert('ログアウトしました');
+      setUser(null);
+    };
+
+    // 起動時にセッション反映
+    const { data: sess } = await sb.auth.getSession();
+    setUser(sess.session);
+
+    // 変化時も反映
+    sb.auth.onAuthStateChange((_e, session) => setUser(session));
+
+    // ===== Mapbox =====
+    mapboxgl.accessToken='pk.eyJ1IjoidG9saWxpZW4iLCJhIjoiY21saXZ3NmN5MDFsdTNkcHVwNHJxcGk2MyJ9.KB63e24JsvfckeEz2WRcNw';
+
+    const map=new mapboxgl.Map({
+      container:'map',
+      style:'mapbox://styles/mapbox/streets-v11',
+      center:[139.767,35.681],
+      zoom:12
+    });
+
+    map.addControl(new MapboxLanguage({defaultLanguage:'ja'}));
+
+    const markers=[];
+    function clearMarkers(){ while(markers.length){ try{ markers.pop().remove(); }catch(e){} } }
+    function addMarker(pin){
+      const m = new mapboxgl.Marker({color:'red'})
+        .setLngLat([pin.lng, pin.lat])
+        .setPopup(new mapboxgl.Popup().setText(pin.title || 'pin'))
+        .addTo(map);
+      markers.push(m);
+    }
+
+    async function loadPins(){
+      const { data, error } = await sb
+        .from('pins')
+        .select('id,title,lat,lng,user_id,created_at')
+        .order('created_at', { ascending:false });
+
+      if (error) { alert('読み込み失敗: ' + error.message); return; }
+
+      clearMarkers();
+      (data || []).forEach(addMarker);
+    }
+
+    map.on('load', loadPins);
+
+    map.on('click', async (e) => {
+      if (!currentUser) { alert('ログインが必要です（未ログインは閲覧のみ）'); return; }
+      const text = prompt('内容を入力してください');
+      if(!text) return;
+
+      const { data, error } = await sb
+        .from('pins')
+        .insert([{ title: text, lat: e.lngLat.lat, lng: e.lngLat.lng }])
+        .select('id,title,lat,lng,user_id,created_at')
+        .single();
+
+      if (error) { alert('保存失敗: ' + error.message); return; }
+      addMarker(data);
+    });
+
+  } catch (err) {
+    console.error(err);
+    const statusEl = document.getElementById('userStatus');
+    if (statusEl) statusEl.innerText = 'JSエラーで停止（Console見て）';
+    alert('JSエラーで止まってます。F12→Consoleを見てください。');
   }
-);
-
-let currentUser=null;
-const status=document.getElementById("userStatus");
-
-function updateUser(session){
-  currentUser=session?.user||null;
-  status.innerText=currentUser?"ログイン中":"ログアウト中";
-}
-
-/* ログイン */
-window.doLogin=async()=>{
-  const {data,error}=await sb.auth.signInWithPassword({
-    email:email.value,
-    password:password.value
-  });
-  if(error){alert(error.message);return;}
-  alert("ログイン成功");
-  updateUser(data.session);
-};
-
-/* ログアウト */
-window.doLogout=async()=>{
-  await sb.auth.signOut();
-  updateUser(null);
-};
-
-sb.auth.onAuthStateChange((e,s)=>updateUser(s));
-
-(async()=>{
-  const {data}=await sb.auth.getSession();
-  updateUser(data.session);
 })();
-
-/* ================== Mapbox ================== */
-
-mapboxgl.accessToken="pk.eyJ1IjoidG9saWxpZW4iLCJhIjoiY21saXZ3NmN5MDFsdTNkcHVwNHJxcGk2MyJ9.KB63e24JsvfckeEz2WRcNw";
-
-const map=new mapboxgl.Map({
-  container:"map",
-  style:"mapbox://styles/mapbox/streets-v11",
-  center:[139.767,35.681],
-  zoom:12
-});
-
-map.addControl(new MapboxLanguage({defaultLanguage:"ja"}));
-
-/* ================== ピン管理 ================== */
-
-const markers=[];
-
-function draw(pin){
-  const m=new mapboxgl.Marker({color:"red"})
-    .setLngLat([pin.lng,pin.lat])
-    .setPopup(new mapboxgl.Popup().setText(pin.title||"pin"))
-    .addTo(map);
-  markers.push(m);
-}
-
-async function loadPins(){
-  const {data,error}=await sb.from("pins").select("*");
-  if(error){alert(error.message);return;}
-
-  markers.forEach(m=>m.remove());
-  data.forEach(draw);
-}
-
-map.on("load",loadPins);
-
-/* クリックで保存 */
-map.on("click",async e=>{
-  if(!currentUser){
-    alert("ログイン必要");
-    return;
-  }
-
-  const text=prompt("内容入力");
-  if(!text)return;
-
-  const {data,error}=await sb
-    .from("pins")
-    .insert([{title:text,lat:e.lngLat.lat,lng:e.lngLat.lng}])
-    .select()
-    .single();
-
-  if(error){alert(error.message);return;}
-
-  draw(data);
-});
 </script>
-
 </body>
 </html>
