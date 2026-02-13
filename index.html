@@ -39,6 +39,7 @@ body{margin:0;}
 
 <script>
 /* ===== Supabase（F5でもセッション保持）===== */
+/* ===== Supabase（F5でもセッション保持）===== */
 const sb = supabase.createClient(
   'https://ahlgfkvqqckkxftwvgqn.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFobGdma3ZxcWNra3hmdHd2Z3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjYzNjcsImV4cCI6MjA4NjQ0MjM2N30.L2JpsadBNs-7ntVM_tYjcedL9TkL8nRfV8tXDG5G5xQ',
@@ -55,30 +56,39 @@ const sb = supabase.createClient(
 let currentUser = null;
 const statusEl = document.getElementById('userStatus');
 
-async function refreshSessionUI(){
-  const { data, error } = await sb.auth.getSession();
-  if (error) console.log(error);
-
-  currentUser = data.session?.user ?? null;
+function setUser(session){
+  currentUser = session?.user ?? null;
   statusEl.innerText = currentUser ? 'ログイン中' : 'ログアウト中';
 }
 
 async function doLogin(){
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
-  const { error } = await sb.auth.signInWithPassword({ email, password });
-  if(error) alert('ログイン失敗: ' + error.message);
-  else alert('ログイン成功');
-  await refreshSessionUI();
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) {
+    alert('ログイン失敗: ' + error.message);
+    return;
+  }
+  alert('ログイン成功');
+  setUser(data.session); // ←ここで即反映
 }
 
 async function doLogout(){
   await sb.auth.signOut();
   alert('ログアウトしました');
-  await refreshSessionUI();
+  setUser(null);
 }
 
-sb.auth.onAuthStateChange(async ()=>{ await refreshSessionUI(); });
+sb.auth.onAuthStateChange((_event, session) => {
+  setUser(session); // ←イベントのsessionをそのまま使う（最重要）
+});
+
+// 起動時も反映
+(async () => {
+  const { data } = await sb.auth.getSession();
+  setUser(data.session);
+})();
 
 /* ===== Mapbox ===== */
 mapboxgl.accessToken='pk.eyJ1IjoidG9saWxpZW4iLCJhIjoiY21saXZ3NmN5MDFsdTNkcHVwNHJxcGk2MyJ9.KB63e24JsvfckeEz2WRcNw';
